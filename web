@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBX Deploy Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #0a0a0a;
+    --bg2:    #111111;
+    --bg3:    #1a1a1a;
+    --bg4:    #222222;
+    --border: #2e2e2e;
+    --b2:     #3d3d3d;
+    --w:      #f5f5f5;
+    --w2:     #c8c8c8;
+    --w3:     #7a7a7a;
+    --w4:     #3f3f3f;
+    --mono: 'IBM Plex Mono', monospace;
+    --disp: 'Bebas Neue', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--w2); font-family: var(--mono); font-size: 13px; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:9998;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:32px 20px; position:relative; z-index:1; }
+
+  .hdr { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--b2); padding-bottom:20px; margin-bottom:32px; }
+  .hdr-l h1 { font-family:var(--disp); font-size:54px; line-height:1; color:var(--w); letter-spacing:3px; }
+  .hdr-l p { font-size:10px; color:var(--w3); letter-spacing:2px; text-transform:uppercase; margin-top:5px; }
+  .hdr-r { text-align:right; font-size:10px; color:var(--w3); letter-spacing:1px; text-transform:uppercase; line-height:2; }
+  .badge { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--b2); padding:4px 10px; border-radius:2px; color:var(--w2); font-size:10px; letter-spacing:1px; margin-bottom:6px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--w4); transition:all .3s; }
+  .dot.on { background:var(--w); box-shadow:0 0 6px var(--w); animation:blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
+
+  .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:28px; }
+  .tab { padding:10px 20px; font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; color:var(--w3); border:none; border-bottom:2px solid transparent; margin-bottom:-1px; background:none; transition:all .15s; }
+  .tab:hover { color:var(--w2); }
+  .tab.active { color:var(--w); border-bottom-color:var(--w); }
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  .slabel { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--w3); margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+  .slabel::after { content:''; flex:1; height:1px; background:var(--border); }
+  .hint { font-size:10px; color:var(--w4); margin-top:5px; line-height:1.6; }
+
+  .cbox { background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:20px; margin-bottom:16px; }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .g1 { display:grid; grid-template-columns:1fr; gap:16px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .flabel { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--w3); }
+  input, select, textarea { background:var(--bg3); border:1px solid var(--border); color:var(--w); font-family:var(--mono); font-size:12px; padding:9px 12px; border-radius:3px; width:100%; outline:none; transition:border-color .15s; }
+  input:focus, select:focus, textarea:focus { border-color:var(--w3); }
+  select option { background:var(--bg3); }
+  textarea { resize:vertical; min-height:80px; }
+
+  .chkrow { display:flex; flex-wrap:wrap; gap:8px; }
+  .chk { display:flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--border); border-radius:3px; background:var(--bg3); cursor:pointer; font-size:11px; user-select:none; transition:all .15s; color:var(--w3); }
+  .chk input { accent-color:var(--w); width:13px; height:13px; }
+  .chk:hover { border-color:var(--b2); color:var(--w2); }
+  .chk.on { border-color:var(--w3); color:var(--w); background:var(--bg4); }
+
+  .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .btn { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:9px 18px; border-radius:3px; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:7px; }
+  .btn-p { background:var(--w); color:var(--bg); border:1px solid var(--w); }
+  .btn-p:hover { background:var(--w2); }
+  .btn-p:disabled { background:var(--w4); color:var(--w3); cursor:not-allowed; border-color:var(--w4); }
+  .btn-o { background:transparent; color:var(--w2); border:1px solid var(--b2); }
+  .btn-o:hover { border-color:var(--w3); color:var(--w); }
+  .btn-o:disabled { opacity:.3; cursor:not-allowed; }
+
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .stat { background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:16px; }
+  .snum { font-family:var(--disp); font-size:40px; color:var(--w); letter-spacing:2px; line-height:1; }
+  .slbl { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--w3); margin-top:4px; }
+
+  .vgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:24px; }
+  .vcard { background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:16px; transition:border-color .4s; }
+  .vcard.flash { border-color:var(--w); animation:fl 1s ease; }
+  @keyframes fl { 0%{box-shadow:0 0 0 rgba(245,245,245,0)}40%{box-shadow:0 0 18px rgba(245,245,245,.12)}100%{box-shadow:0 0 0 rgba(245,245,245,0)} }
+  .vtop { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .vname { font-size:12px; font-weight:600; color:var(--w); letter-spacing:.5px; }
+  .ptag { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; padding:2px 8px; border:1px solid var(--b2); border-radius:2px; color:var(--w3); }
+  .vhash { font-size:12px; color:var(--w2); word-break:break-all; line-height:1.5; }
+  .vhash.empty { color:var(--w4); font-style:italic; }
+  .vhash.sh { animation:sh 1.4s ease-in-out infinite; }
+  @keyframes sh { 0%,100%{opacity:.3}50%{opacity:.8} }
+  .vmeta { display:flex; align-items:center; justify-content:space-between; margin-top:10px; font-size:10px; color:var(--w3); }
+  .rddbtn { text-decoration:none; font-size:10px; letter-spacing:1px; color:var(--w3); border:1px solid var(--border); padding:3px 9px; border-radius:2px; transition:all .15s; }
+  .rddbtn:hover { border-color:var(--w3); color:var(--w); }
+
+  .logbox { background:var(--bg2); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .loghdr { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .loghdr-t { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--w3); }
+  .loghdr-c { font-size:10px; color:var(--w4); }
+  #feed { height:260px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .entry { display:flex; gap:12px; padding:5px 16px; font-size:11px; line-height:1.6; border-left:2px solid transparent; animation:si .15s ease; }
+  @keyframes si { from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none} }
+  .entry:hover { background:rgba(255,255,255,.02); }
+  .entry.deploy { border-left-color:var(--w); }
+  .entry.info   { border-left-color:var(--w3); }
+  .entry.warn   { border-left-color:#aaa; }
+  .entry.error  { border-left-color:#666; }
+  .entry.hook   { border-left-color:#888; }
+  .et { color:var(--w4); min-width:65px; }
+  .ety { min-width:72px; font-weight:600; }
+  .entry.deploy .ety { color:var(--w); }
+  .entry.info   .ety { color:var(--w2); }
+  .entry.warn   .ety { color:#ccc; }
+  .entry.error  .ety { color:#999; }
+  .entry.hook   .ety { color:#bbb; }
+  .em { color:var(--w2); flex:1; }
+
+  .bintro { background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:20px; margin-bottom:16px; }
+  .bintro h2 { font-family:var(--disp); font-size:30px; color:var(--w); letter-spacing:2px; margin-bottom:8px; }
+  .bintro p { color:var(--w3); font-size:12px; line-height:1.8; }
+  .codeblock { background:var(--bg); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:16px; }
+  .codehdr { padding:8px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--w3); }
+  .copybtn { font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border:1px solid var(--b2); border-radius:2px; cursor:pointer; background:transparent; color:var(--w3); transition:all .15s; }
+  .copybtn:hover { border-color:var(--w3); color:var(--w); }
+  pre { padding:16px; overflow-x:auto; font-family:var(--mono); font-size:11.5px; line-height:1.75; color:var(--w2); max-height:440px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; white-space:pre; }
+  .divider { height:1px; background:var(--border); margin:20px 0; }
+  code { background:var(--bg3); padding:1px 7px; border-radius:2px; color:var(--w); font-family:var(--mono); }
+  .steps p { font-size:12px; color:var(--w3); line-height:2; }
+
+  #toasts { position:fixed; top:16px; right:16px; z-index:10000; display:flex; flex-direction:column; gap:6px; }
+  .toast { background:var(--bg2); border:1px solid var(--b2); padding:10px 16px; border-radius:3px; font-size:11px; min-width:240px; color:var(--w2); animation:ti .2s ease; }
+  .toast.ok  { border-color:var(--w3); }
+  .toast.err { border-color:#666; }
+  @keyframes ti { from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none} }
+
+  @media(max-width:680px) {
+    .stats { grid-template-columns:repeat(2,1fr); }
+    .vgrid  { grid-template-columns:1fr; }
+    .g2     { grid-template-columns:1fr; }
+    .hdr-l h1 { font-size:38px; }
+  }
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-l">
+    <h1>RBX TRACKER</h1>
+    <p>Roblox Deployment Monitor · rdd.weao.gg</p>
+  </div>
+  <div class="hdr-r">
+    <div class="badge"><div class="dot" id="ldot"></div><span id="ltext">OFFLINE</span></div>
+    <div id="next-lbl">Next check: —</div>
+    <div id="uptime-lbl">Uptime: 0s</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('tracker',this)">Tracker</button>
+  <button class="tab" onclick="switchTab('bot',this)">Discord Bot Script</button>
+</div>
+
+<div id="tab-tracker" class="panel active">
+
+  <div class="slabel">Configuration</div>
+  <div class="cbox">
+    <div class="g1" style="margin-bottom:14px">
+      <div class="field">
+        <span class="flabel">Discord Webhook URL</span>
+        <input type="url" id="webhook" placeholder="https://discord.com/api/webhooks/ID/TOKEN" oninput="syncWh(this.value)" />
+        <p class="hint">Paste your webhook — will fire on every new deployment detected.</p>
+      </div>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div class="field">
+        <span class="flabel">Poll Interval (seconds)</span>
+        <input type="number" id="interval" value="30" min="10" />
+        <p class="hint">Min 10s · 30s recommended</p>
+      </div>
+      <div class="field">
+        <span class="flabel">Channel</span>
+        <select id="channel">
+          <option value="LIVE">LIVE (Production)</option>
+          <option value="zcanary">zcanary</option>
+          <option value="zintegration">zintegration</option>
+          <option value="znext">znext</option>
+          <option value="zpublictest">zpublictest</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <span class="flabel" style="margin-bottom:8px;display:block">Binary Types</span>
+      <div class="chkrow" id="binaries">
+        <label class="chk on"><input type="checkbox" value="WindowsPlayer" checked> WindowsPlayer</label>
+        <label class="chk on"><input type="checkbox" value="WindowsStudio64" checked> WindowsStudio64</label>
+        <label class="chk"><input type="checkbox" value="MacPlayer"> MacPlayer</label>
+        <label class="chk"><input type="checkbox" value="MacStudio"> MacStudio</label>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn btn-p" id="btn-start" onclick="startTracker()">▶ Start</button>
+      <button class="btn btn-o" id="btn-stop" onclick="stopTracker()" disabled>■ Stop</button>
+      <button class="btn btn-o" onclick="testHook()">⚡ Test Webhook</button>
+      <button class="btn btn-o" onclick="clearFeed()">✕ Clear Log</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="snum" id="s-checks">0</div><div class="slbl">Checks Run</div></div>
+    <div class="stat"><div class="snum" id="s-deploys">0</div><div class="slbl">Deploys Found</div></div>
+    <div class="stat"><div class="snum" id="s-hooks">0</div><div class="slbl">Webhooks Sent</div></div>
+    <div class="stat"><div class="snum" id="s-errors">0</div><div class="slbl">Errors</div></div>
+  </div>
+
+  <div class="slabel">Current Versions</div>
+  <div class="vgrid" id="vgrid"></div>
+
+  <div class="slabel">Live Feed</div>
+  <div class="logbox">
+    <div class="loghdr">
+      <span class="loghdr-t">// Output</span>
+      <span class="loghdr-c" id="feed-count">0 entries</span>
+    </div>
+    <div id="feed"></div>
+  </div>
+
+</div>
+
+<div id="tab-bot" class="panel">
+
+  <div class="bintro">
+    <h2>DISCORD BOT SCRIPT</h2>
+    <p>
+      Run this script with Node.js on any machine (your PC, VPS, Raspberry Pi) to post Roblox deployment alerts
+      to your Discord channel 24/7. No external packages needed — uses Node's built-in <code>fetch</code>.
+    </p>
+  </div>
+
+  <div class="slabel">Step 1 — Webhook</div>
+  <div class="cbox">
+    <div class="field">
+      <span class="flabel">Your Webhook URL</span>
+      <input type="url" id="bot-wh" placeholder="https://discord.com/api/webhooks/..." oninput="syncWh(this.value)" />
+      <p class="hint">Typing here also fills the Tracker tab. The script below updates live.</p>
+    </div>
+  </div>
+
+  <div class="slabel">Step 2 — Setup</div>
+  <div class="cbox steps">
+    <p>
+      1. Install Node.js (v18+) from <strong style="color:var(--w2)">nodejs.org</strong><br>
+      2. Copy the script below → save as <code>tracker.js</code><br>
+      3. Open terminal in that folder → run: <code>node tracker.js</code>
+    </p>
+  </div>
+
+  <div class="slabel">Step 3 — The Script</div>
+  <div class="codeblock">
+    <div class="codehdr">
+      <span>tracker.js — Node.js (no dependencies)</span>
+      <button class="copybtn" onclick="copyScript()">Copy</button>
+    </div>
+    <pre id="script-out"></pre>
+  </div>
+
+  <div class="divider"></div>
+  <div class="slabel">Keep it running 24/7 with PM2</div>
+  <div class="codeblock">
+    <div class="codehdr">
+      <span>Terminal</span>
+      <button class="copybtn" onclick="copyTxt('npm install -g pm2\npm2 start tracker.js --name rbx-tracker\npm2 save\npm2 startup')">Copy</button>
+    </div>
+    <pre><span style="color:var(--w4)"># Install PM2 (process manager)</span>
+npm install -g pm2
+
+<span style="color:var(--w4)"># Start as background daemon</span>
+pm2 start tracker.js --name rbx-tracker
+
+<span style="color:var(--w4)"># Auto-restart on system reboot</span>
+pm2 save
+pm2 startup</pre>
+  </div>
+
+</div>
+</div>
+
+<script>
+const S = {
+  running:false, ivLoop:null, ivCd:null, ivUp:null,
+  checks:0, deploys:0, hooks:0, errors:0, logN:0,
+  known:{}, lastSeen:{}, startedAt:null
+};
+
+const CH_PRE = { LIVE:'', zcanary:'channel/zcanary/', zintegration:'channel/zintegration/', znext:'channel/znext/', zpublictest:'channel/zpublictest/' };
+const BT_PATH = { WindowsPlayer:'version', WindowsStudio64:'versionQTStudio', MacPlayer:'mac/version', MacStudio:'mac/versionStudio' };
+const PLAT = { WindowsPlayer:'WIN', WindowsStudio64:'WIN', MacPlayer:'MAC', MacStudio:'MAC' };
+
+function vUrl(bt){ return `https://setup-aws.rbxcdn.com/${CH_PRE[ch()]||''}${BT_PATH[bt]}`; }
+function rddUrl(bt,hash){ const c=ch(); const q=c==='LIVE'?'':`&channel=${c}`; return `https://rdd.weao.gg/?binaryType=${bt}${q}&version=${hash}`; }
+
+async function fetchVer(bt){
+  const url = vUrl(bt);
+  const proxies = [
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+  ];
+  for(const p of proxies){
+    try{
+      const r = await fetch(p,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok) continue;
+      const t = (await r.text()).trim();
+      if(t.startsWith('version-')) return t;
+    }catch{}
+  }
+  throw new Error('All proxies failed');
+}
+
+async function sendHook(bt, oldH, newH){
+  const url = wh(); if(!url) return;
+  await fetch(url,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      embeds:[{
+        title:'New Roblox Deployment',
+        color: 0xffffff,
+        fields:[
+          {name:'Binary', value:`\`${bt}\``, inline:true},
+          {name:'Channel', value:`\`${ch()}\``, inline:true},
+          {name:'Platform', value:PLAT[bt], inline:true},
+          {name:'New Hash', value:`\`${newH}\``},
+          {name:'Old Hash', value:oldH?`\`${oldH}\``:'*first check*'},
+          {name:'Download (RDD)', value:`[Open in RDD](${rddUrl(bt,newH)})`}
+        ],
+        footer:{text:'RBX Deploy Tracker · rdd.weao.gg'},
+        timestamp: new Date().toISOString()
+      }]
+    })
+  });
+}
+
+async function checkAll(){
+  const bts = checked();
+  S.checks++; el('s-checks').textContent = S.checks;
+  for(const bt of bts){
+    try{
+      const hash = await fetchVer(bt);
+      S.lastSeen[bt] = ts();
+      if(S.known[bt]===undefined){
+        S.known[bt]=hash;
+        log('info',`Initial — ${bt}: ${hash}`);
+        updateCard(bt,hash,false);
+      } else if(S.known[bt]!==hash){
+        const old=S.known[bt]; S.known[bt]=hash;
+        S.deploys++; el('s-deploys').textContent=S.deploys;
+        log('deploy',`NEW DEPLOY ▸ ${bt} — ${old.slice(0,20)}… → ${hash}`);
+        updateCard(bt,hash,true);
+        toast('ok',`🚀 Deploy: ${bt}`);
+        try{
+          await sendHook(bt,old,hash);
+          S.hooks++; el('s-hooks').textContent=S.hooks;
+          log('hook',`Discord notified (${bt})`);
+        }catch(e){
+          S.errors++; el('s-errors').textContent=S.errors;
+          log('error',`Webhook failed: ${e.message}`);
+        }
+      } else { updateCard(bt,hash,false); }
+    }catch(e){
+      S.errors++; el('s-errors').textContent=S.errors;
+      log('error',`${bt}: ${e.message}`);
+    }
+  }
+}
+
+async function startTracker(){
+  if(S.running) return;
+  if(!checked().length){ toast('err','Select at least one binary type.'); return; }
+  S.running=true;
+  el('btn-start').disabled=true; el('btn-stop').disabled=false;
+  el('ldot').className='dot on'; el('ltext').textContent='LIVE';
+  const sec=ivSec();
+  log('info',`Started — ${checked().join(', ')} @ ${ch()} every ${sec}s`);
+  S.startedAt=Date.now();
+  S.ivUp=setInterval(()=>{ el('uptime-lbl').textContent='Uptime: '+fmtUp(Math.floor((Date.now()-S.startedAt)/1000)); },1000);
+  renderCards();
+  await checkAll();
+  startCd(sec);
+  S.ivLoop=setInterval(async()=>{ await checkAll(); startCd(ivSec()); }, sec*1000);
+}
+
+function stopTracker(){
+  [S.ivLoop,S.ivCd,S.ivUp].forEach(clearInterval);
+  S.running=false;
+  el('btn-start').disabled=false; el('btn-stop').disabled=true;
+  el('ldot').className='dot'; el('ltext').textContent='OFFLINE';
+  el('next-lbl').textContent='Next check: —'; el('uptime-lbl').textContent='Uptime: 0s';
+  log('warn','Tracker stopped.');
+}
+
+let _cd=0;
+function startCd(s){
+  _cd=s; clearInterval(S.ivCd);
+  el('next-lbl').textContent=`Next check: ${_cd}s`;
+  S.ivCd=setInterval(()=>{ _cd--; el('next-lbl').textContent=`Next check: ${_cd<=0?'…':_cd+'s'}`; },1000);
+}
+
+async function testHook(){
+  const url=wh(); if(!url){ toast('err','Enter a webhook URL first.'); return; }
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({embeds:[{title:'✅ Webhook Connected',description:'RBX Deploy Tracker linked to this channel.',color:0xffffff,footer:{text:'RBX Deploy Tracker'},timestamp:new Date().toISOString()}]})
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    toast('ok','✅ Webhook working!'); log('hook','Test webhook sent OK.');
+  }catch(e){ toast('err',`Error: ${e.message}`); log('error',`Test failed: ${e.message}`); }
+}
+
+function renderCards(){
+  const bts=checked(); const g=el('vgrid'); g.innerHTML='';
+  bts.forEach(bt=>{
+    const d=document.createElement('div');
+    d.className='vcard'; d.id=`vc-${bt}`;
+    const h=S.known[bt];
+    d.innerHTML=`
+      <div class="vtop"><span class="vname">${bt}</span><span class="ptag">${PLAT[bt]}</span></div>
+      <div class="vhash ${h?'':'empty sh'}" id="vh-${bt}">${h||'waiting…'}</div>
+      <div class="vmeta">
+        <span id="vm-${bt}">${S.lastSeen[bt]?'Seen: '+S.lastSeen[bt]:'Not fetched yet'}</span>
+        ${h?`<a class="rddbtn" href="${rddUrl(bt,h)}" target="_blank">↗ RDD</a>`:''}
+      </div>`;
+    g.appendChild(d);
+  });
+}
+
+function updateCard(bt,hash,isNew){
+  const card=el(`vc-${bt}`); if(!card) return;
+  if(isNew){ card.classList.add('flash'); setTimeout(()=>card.classList.remove('flash'),1200); }
+  const he=el(`vh-${bt}`); if(he){ he.className='vhash'; he.textContent=hash; }
+  const me=el(`vm-${bt}`); if(me) me.textContent='Seen: '+ts();
+  const a=card.querySelector('.rddbtn');
+  if(a) a.href=rddUrl(bt,hash);
+  else { const m=card.querySelector('.vmeta'); if(m){ const l=document.createElement('a'); l.className='rddbtn'; l.href=rddUrl(bt,hash); l.target='_blank'; l.textContent='↗ RDD'; m.appendChild(l); } }
+}
+
+function log(type,msg){
+  const f=el('feed');
+  const d=document.createElement('div');
+  const lbl={deploy:'DEPLOY',info:'INFO',warn:'WARN',error:'ERROR',hook:'WEBHOOK'};
+  d.className=`entry ${type}`;
+  d.innerHTML=`<span class="et">${ts()}</span><span class="ety">${lbl[type]||type}</span><span class="em">${msg}</span>`;
+  f.prepend(d); S.logN++;
+  el('feed-count').textContent=`${S.logN} entries`;
+  while(f.children.length>300) f.removeChild(f.lastChild);
+}
+function clearFeed(){ el('feed').innerHTML=''; S.logN=0; el('feed-count').textContent='0 entries'; }
+
+function toast(type,msg){
+  const c=el('toasts'); const t=document.createElement('div');
+  t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+const el  = id => document.getElementById(id);
+const ts  = () => new Date().toLocaleTimeString('en-US',{hour12:false});
+const wh  = () => el('webhook').value.trim() || el('bot-wh').value.trim();
+const ch  = () => el('channel').value;
+const ivSec = () => Math.max(10, parseInt(el('interval').value)||30);
+const checked = () => [...document.querySelectorAll('#binaries input:checked')].map(e=>e.value);
+const fmtUp = s => s<60?`${s}s`:s<3600?`${Math.floor(s/60)}m ${s%60}s`:`${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+
+function syncWh(v){
+  el('webhook').value=v; el('bot-wh').value=v; buildScript();
+}
+
+document.querySelectorAll('#binaries input').forEach(cb=>{
+  cb.addEventListener('change',function(){ this.closest('.chk').classList.toggle('on',this.checked); });
+});
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active'); el('tab-'+id).classList.add('active');
+}
+
+function buildScript(){
+  const whUrl = wh() || 'PASTE_YOUR_WEBHOOK_URL_HERE';
+  const script =
+`const WEBHOOK_URL  = "${whUrl}";
+const INTERVAL_MS  = 30_000;
+const CHANNEL      = "LIVE";
+
+const BINARY_TYPES = [
+  { name: "WindowsPlayer",   path: "version"           },
+  { name: "WindowsStudio64", path: "versionQTStudio"   }
+];
+
+const CH_PREFIX = {
+  LIVE:         "",
+  zcanary:      "channel/zcanary/",
+  zintegration: "channel/zintegration/",
+  znext:        "channel/znext/",
+  zpublictest:  "channel/zpublictest/",
+};
+
+const knownVersions = {};
+
+async function fetchVersion(bt) {
+  const prefix = CH_PREFIX[CHANNEL] ?? "";
+  const url    = \`https://setup-aws.rbxcdn.com/\${prefix}\${bt.path}\`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(\`HTTP \${res.status} for \${bt.name}\`);
+  const text = (await res.text()).trim();
+  if (!text.startsWith("version-")) {
+    throw new Error(\`Unexpected response: \${text.slice(0, 40)}\`);
+  }
+  return text;
+}
+
+async function sendWebhook(bt, oldHash, newHash) {
+  const rdd = \`https://rdd.weao.gg/?binaryType=\${bt.name}&channel=\${CHANNEL}&version=\${newHash}\`;
+  const payload = {
+    embeds: [{
+      title: "New Roblox Deployment",
+      color: 0xffffff,
+      fields: [
+        { name: "Binary",         value: \`\\\`\${bt.name}\\\`\`, inline: true  },
+        { name: "Channel",        value: \`\\\`\${CHANNEL}\\\`\`, inline: true  },
+        { name: "New Hash",       value: \`\\\`\${newHash}\\\`\` },
+        { name: "Previous Hash",  value: oldHash ? \`\\\`\${oldHash}\\\`\` : "*first check*" },
+        { name: "Download (RDD)", value: \`[Open in RDD](\${rdd})\` },
+      ],
+      footer:    { text: "RBX Deploy Tracker · rdd.weao.gg" },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  const res = await fetch(WEBHOOK_URL, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(\`Webhook HTTP \${res.status}\`);
+}
+
+async function checkAll() {
+  const now = new Date().toLocaleTimeString();
+  for (const bt of BINARY_TYPES) {
+    try {
+      const hash = await fetchVersion(bt);
+      if (knownVersions[bt.name] === undefined) {
+        knownVersions[bt.name] = hash;
+        console.log(\`[\${now}] Initial  \${bt.name}: \${hash}\`);
+      } else if (knownVersions[bt.name] !== hash) {
+        const old = knownVersions[bt.name];
+        knownVersions[bt.name] = hash;
+        console.log(\`[\${now}] 🚀 DEPLOY \${bt.name}\`);
+        await sendWebhook(bt, old, hash);
+        console.log(\`[\${now}] ✅ Webhook sent\`);
+      } else {
+        console.log(\`[\${now}] No change \${bt.name}: \${hash}\`);
+      }
+    } catch (err) {
+      console.error(\`[\${now}] ❌ \${bt.name}: \${err.message}\`);
+    }
+  }
+}
+
+console.log("RBX Deploy Tracker");
+console.log(\`Channel : \${CHANNEL}\`);
+console.log(\`Watching: \${BINARY_TYPES.map(b => b.name).join(", ")}\`);
+console.log(\`Interval: \${INTERVAL_MS / 1000}s\`);
+console.log("─".repeat(50));
+
+checkAll();
+setInterval(checkAll, INTERVAL_MS);
+`;
+  el('script-out').textContent = script;
+}
+
+function copyScript(){ copyTxt(el('script-out').textContent); }
+function copyTxt(t){ navigator.clipboard.writeText(t).then(()=>toast('ok','✓ Copied!')); }
+
+buildScript();
+log('info','Tracker ready — paste your webhook URL and click Start.');
+log('info','Data source: setup-aws.rbxcdn.com (same as rdd.weao.gg)');
+</script>
+</body>
+</html>
